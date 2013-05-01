@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Visualizzo Email</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="description" content="">
+	<meta name="author" content="">
+	
+	<link href="css/bootstrap.min.css" rel="stylesheet">
+	<link href="css/bootstrap-responsive.min.css" rel="stylesheet">
+	<link href="css/style.css" rel="stylesheet">
+
+	<!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+	<!--[if lt IE 9]>
+		<script src="js/html5shiv.js"></script>
+	<![endif]-->
+
+	<!-- Fav and touch icons -->
+	<link rel="apple-touch-icon-precomposed" sizes="144x144" href="img/apple-touch-icon-144-precomposed.png">
+	<link rel="apple-touch-icon-precomposed" sizes="114x114" href="img/apple-touch-icon-114-precomposed.png">
+	<link rel="apple-touch-icon-precomposed" sizes="72x72" href="img/apple-touch-icon-72-precomposed.png">
+	<link rel="apple-touch-icon-precomposed" href="img/apple-touch-icon-57-precomposed.png">
+	<link rel="shortcut icon" href="img/favicon.png">
+	
+	<script type="text/javascript" src="js/jquery.min.js"></script>
+	<script type="text/javascript" src="js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="js/scripts.js"></script>
+</head>
+<body>
+	<div class="container-fluid">
+		<div class="row-fluid">
+			<div class="span12">
+				<h2>
+					Heading
+				</h2>
+				<p>
+					Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui.
+				</p>
+			</div>
+		</div>
+		<div class="row-fluid">
+			<div class="span12">
+				<form action="#" method="get" class="form-inline">
+					<fieldset>
+						<div class="input-append">
+						<input class="input-xxlarge" name="url" value="{{url}}" type="url" required>
+						<button type="submit" class="btn btn-primary">Submit</button>
+						</div>
+					</fieldset>
+				</form>
+			</div>
+		</div>
+	</div>
+	<div class="container-fluid">
+		<div class="row-fluid">
+			<div class="span12">
+				<p>
+					<b>Date:</b> {{date|e}}<br>
+					<b>From:</b> {{from|e}}<br>
+					{% if to %}<b>To:</b> {{to|e}}<br>{% endif %}
+					{% if cc %}<b>CC:</b> {{cc|e}}<br>{% endif %}
+					{% if bcc %}<b>BCC:</b> {{bcc|e}}<br>{% endif %}
+					<b>Subject:</b> {{subject|e}}<br>
+				</p>
+				<div class="accordion" id="email-accordion">
+				{% for part in parts %}
+					{% if part.content_type == 'text/plain' %}
+					<div class="accordion-group">
+						<div class="accordion-heading">
+							<a class="accordion-toggle" data-toggle="collapse" data-parent="#email-accordion" href="#collapse{{loop.index}}">{{part.content_type}}</a>
+						</div>
+						<div id="collapse{{loop.index}}" class="accordion-body collapse in">
+							<div class="accordion-inner">
+								<pre>{{part.payload}}</pre>
+							</div>
+						</div>
+					</div>
+					{% elif part.content_type == 'text/html' %}
+					{% elif part.content_type.startswith('image') %}
+					<div class="accordion-group">
+						<div class="accordion-heading">
+							<a class="accordion-toggle" data-toggle="collapse" data-parent="#email-accordion" href="#collapse{{loop.index}}">{{ part.filename }}</a>
+						</div>
+						<div id="collapse{{loop.index}}" class="accordion-body collapse in">
+							<div class="accordion-inner">
+								<img src="data:{{part.content_type}};base64,{{part.payload}}">
+							</div>
+						</div>
+					</div>
+					{% elif part.content_type == 'application/pdf' %}
+					<div class="accordion-group">
+						<div class="accordion-heading">
+							<a class="accordion-toggle" data-toggle="collapse" data-parent="#email-accordion" href="#collapse{{loop.index}}">{{ part.filename }}</a>
+						</div>
+						<div id="collapse{{loop.index}}" class="accordion-body collapse in">
+							<div class="accordion-inner" id="inner-{{loop.index}}">
+							</div>
+						</div>
+					</div>
+					{% else %}
+					<div class="accordion-group">
+						<div class="accordion-heading">
+							<a class="accordion-toggle" data-toggle="collapse" data-parent="#email-accordion" href="#collapse{{loop.index}}">
+							{{ part.content_type }} - {{ part.filename }}
+							</a>
+						</div>
+					</div>
+					{% endif %}
+				{% endfor %}
+				</div>
+			</div>
+		</div>
+	</div>
+	<script type="text/javascript" src="https://raw.github.com/mozilla/pdf.js/gh-pages/build/pdf.js"></script>
+	<script type="text/javascript" src="https://raw.github.com/danguer/blog-examples/master/js/base64-binary.js"></script>
+	{% for part in parts %}
+	{% if part.content_type == 'application/pdf' %}
+	<script type="text/javascript">
+	var pdfdata{{loop.index}} = Base64Binary.decodeArrayBuffer("{{part.payload}}");
+	PDFJS.disableWorker = true
+	PDFJS.getDocument(pdfdata{{loop.index}}).then(function getPdfHelloWorld(pdf) {
+		for (var i = 1; i <= pdf.numPages; ++i) {
+			pdf.getPage(i).then(function getPageHelloWorld(page) {
+				var scale = 1;
+				var viewport = page.getViewport(scale);
+
+				var c = $("<canvas id='canvas-{{loop.index}}-"+i+"' style='width: 100%;'></canvas>").appendTo("#inner-{{loop.index}}");
+				var context = c.get(0).getContext('2d');
+				c.get(0).height = viewport.height;
+				c.get(0).width = viewport.width;
+
+				page.render({canvasContext: context, viewport: viewport});
+			});
+		}
+	});
+	</script>
+	{% endif %}
+	{% endfor %}
+</body>
+</html>
